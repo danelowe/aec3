@@ -1,0 +1,1 @@
+// WebRTC's build system would usually generate this file.
