@@ -1,17 +1,42 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.25)
 project(aec3)
 
 set(CMAKE_CXX_STANDARD 17)
 if (APPLE)
     add_definitions(-DWEBRTC_MAC -DWEBRTC_POSIX -DWEBRTC_APM_DEBUG_DUMP=0)
 elseif (UNIX)
-    add_definitions(-DWEBRTC_POSIX -DWEBRTC_APM_DEBUG_DUMP=0)
+    add_definitions(-DWEBRTC_LINUX -DWEBRTC_POSIX -DWEBRTC_APM_DEBUG_DUMP=0)
 endif ()
 
 
 include_directories(aec3)
 include_directories(abseil-cpp)
 include_directories(webrtc)
+
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+    set (X86 TRUE)
+else ()
+    set (X86 FALSE)
+endif ()
+
+if (X86)
+    set(X86_SOURCES
+            webrtc/system_wrappers/source/cpu_features.cc
+            webrtc/common_audio/third_party/ooura/fft_size_128/ooura_fft_sse2.cc
+            webrtc/common_audio/resampler/sinc_resampler_sse.cc
+    )
+    add_library(aec3_avx2
+            webrtc/common_audio/resampler/sinc_resampler_avx2.cc
+            webrtc/modules/audio_processing/aec3/adaptive_fir_filter_avx2.cc
+            webrtc/modules/audio_processing/aec3/fft_data_avx2.cc
+            webrtc/modules/audio_processing/aec3/matched_filter_avx2.cc
+            webrtc/modules/audio_processing/aec3/vector_math_avx2.cc
+            webrtc/modules/audio_processing/aec3/adaptive_fir_filter_erl_avx2.cc
+    )
+    target_compile_options(aec3_avx2 PUBLIC "-mavx2")
+    target_compile_options(aec3_avx2 PUBLIC "-mfma")
+endif ()
 
 set(SOURCES
         aec3/main.cc
@@ -108,6 +133,9 @@ set(SOURCES
         webrtc/rtc_base/time_utils.cc
         webrtc/system_wrappers/source/field_trial.cc
         webrtc/system_wrappers/source/metrics.cc
+
+        ${X86_SOURCES}
+
 )
 
 
@@ -115,4 +143,8 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} "-framework CoreFoundation")
+endif()
+
+if (X86)
+    target_link_libraries(aec3 aec3_avx2)
 endif()

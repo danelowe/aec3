@@ -102,16 +102,10 @@ int main(int argc, char* argv[])
         config.sample_rate_hz(), config.num_channels(),
         config.sample_rate_hz(), config.num_channels(),
         config.sample_rate_hz(), config.num_channels());
-    constexpr int kLinearOutputRateHz = 16000;
-    std::unique_ptr<AudioBuffer> aec_linear_audio = std::make_unique<AudioBuffer>(
-        kLinearOutputRateHz, config.num_channels(),
-        kLinearOutputRateHz, config.num_channels(),
-        kLinearOutputRateHz, config.num_channels());
 
     AudioFrame ref_frame, aec_frame;
 
     void* h_out = wav_write_open(argv[3], rec_sample_rate, rec_bits_per_sample, rec_channels);
-    void* h_linear_out = wav_write_open("linear.wav", kLinearOutputRateHz, rec_bits_per_sample, rec_channels);
 
     int samples_per_frame = sample_rate / 100;
     int bytes_per_frame = samples_per_frame * bits_per_sample / 8;
@@ -140,15 +134,12 @@ int main(int argc, char* argv[])
         aec_audio->SplitIntoFrequencyBands();
         hp_filter->Process(aec_audio.get(), true);
         echo_controler->SetAudioBufferDelay(0);
-        echo_controler->ProcessCapture(aec_audio.get(), aec_linear_audio.get(), false);
+        echo_controler->ProcessCapture(aec_audio.get(), false);
         aec_audio->MergeFrequencyBands();
 
         aec_audio->CopyTo(config, reinterpret_cast<int16_t* const>(aec_tmp));
         wav_write_data(h_out, aec_tmp, bytes_per_frame);
 
-        aec_frame.UpdateFrame(0, nullptr, kLinearOutputRateHz / 100, kLinearOutputRateHz, AudioFrame::kNormalSpeech, AudioFrame::kVadActive, 1);
-        aec_linear_audio->CopyTo(config, reinterpret_cast<int16_t* const>(aec_tmp));
-        wav_write_data(h_linear_out, aec_tmp, bytes_per_frame);
         bar.print_bar(current * 1.f / total);
     }
     std::cout << std::endl;
@@ -158,7 +149,6 @@ int main(int argc, char* argv[])
     wav_read_close(h_ref);
     wav_read_close(h_rec);
     wav_write_close(h_out);
-    wav_write_close(h_linear_out);
 
     return 0;
 }
