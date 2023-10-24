@@ -34,8 +34,8 @@ if (X86)
             webrtc/modules/audio_processing/aec3/vector_math_avx2.cc
             webrtc/modules/audio_processing/aec3/adaptive_fir_filter_erl_avx2.cc
     )
-    target_compile_options(aec3_avx2 PUBLIC "-mavx2")
-    target_compile_options(aec3_avx2 PUBLIC "-mfma")
+    target_compile_options(aec3_avx2 PRIVATE "-mavx2")
+    target_compile_options(aec3_avx2 PRIVATE "-mfma")
 endif ()
 
 set(SOURCES
